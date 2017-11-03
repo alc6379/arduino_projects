@@ -17,10 +17,10 @@ const char* password = WIFI_PASSWORD; //add your password here
 const char* mqtt_server = "192.168.1.202";
 const char* mqtt_user = "powerswitch";
 const char* mqtt_password = "p0w3r!";
-const char* monitor_topic = "power/desktop/#";
-const char* log_topic = "power/desktop/log";
-const char* state_topic = "power/desktop/state";
-const char* power_topic = "power/desktop/control";
+const char* monitor_topic = "power/wemos/#";
+const char* log_topic = "power/wemos/log";
+const char* state_topic = "power/wemos/state";
+const char* power_topic = "power/wemos/control";
 const char* all_power_topic = "power/all/control";
 
 int counter = 0;
@@ -43,7 +43,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print(receivedChar);
   }
   Serial.println();
-  if (strcmp(power_topic, topic) == 0 || strcmp(power_topic, topic) == 0) {
+  if (strcmp(power_topic, topic) == 0 || strcmp(all_power_topic, topic) == 0) {
     Serial.println("evaluating shutdown condition");
     Serial.println("recieved shutdown command from MQTT");
     pressPowerButton();
