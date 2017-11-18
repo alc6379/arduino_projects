@@ -30,17 +30,17 @@ PubSubClient client(espClient);
 void setup() {
   Serial.begin(115200);
   setup_wifi();
-    client.setServer(mqtt_server, 1883);
-    client.setCallback(configCallback);
-//  configureTopics();
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
+  //  configureTopics();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-    if (!client.connected()) {
-      reconnect();
-    }
-    client.loop();
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
 }
 
 void setup_wifi() {
@@ -60,38 +60,42 @@ void setup_wifi() {
 
 }
 
-void configCallback(char* topic, byte* payload, unsigned int length) {
+void callback(char* topic, byte* payload, unsigned int length) {
   // put your setup code here, to run once:
   Serial.println("got message");
-  if (configTopic.compareTo(String(topic)) == 0) {
+  String strTopic = String(topic);
+  if (configTopic.compareTo(strTopic) == 0) {
+    configureModule(payload);
+  }
+}
 
-    unsigned char *chrPayload = payload;
-    Serial.println(String((char*)chrPayload));
+void configureModule(byte* inputPayload) {
+  unsigned char *chrPayload = inputPayload;
+  Serial.println(String((char*)chrPayload));
 
-    JsonObject& root = jsonBuffer.parseObject(chrPayload);
+  JsonObject& root = jsonBuffer.parseObject(chrPayload);
 
-    if (root.success()) {
+  if (root.success()) {
 
-      log_topic = (char*)root["log-topic"].as<char*>();
-      Serial.print("log-topic: ");
-      Serial.println(log_topic );
+    log_topic = (char*)root["log-topic"].as<char*>();
+    Serial.print("log-topic: ");
+    Serial.println(log_topic );
 
-      state_topic = (char*)root["state-topic"].as<char*>();
-      Serial.print("state-topic: ");
-      Serial.println(state_topic );
+    state_topic = (char*)root["state-topic"].as<char*>();
+    Serial.print("state-topic: ");
+    Serial.println(state_topic );
 
-      power_topic = (char*)root["power-topic"].as<char*>();
-      Serial.print("power-topic: ");
-      Serial.println(power_topic );
+    power_topic = (char*)root["power-topic"].as<char*>();
+    Serial.print("power-topic: ");
+    Serial.println(power_topic );
 
-      monitor_topic = (char*)root["monitor-topic"].as<char*>();
-      Serial.print("monitor-topic: ");
-      Serial.println(monitor_topic );
+    monitor_topic = (char*)root["monitor-topic"].as<char*>();
+    Serial.print("monitor-topic: ");
+    Serial.println(monitor_topic );
 
-      all_power_topic = (char*)root["all-power-topic"].as<char*>();
-      Serial.print("all-power-topic: ");
-      Serial.println(all_power_topic );
-    }
+    all_power_topic = (char*)root["all-power-topic"].as<char*>();
+    Serial.print("all-power-topic: ");
+    Serial.println(all_power_topic );
   }
 }
 
@@ -102,10 +106,6 @@ void reconnect() {
     if (client.connect((char*) macAddress.c_str(), mqtt_user, mqtt_password)) {
       Serial.println("mqtt connected");
       client.subscribe((char*)configTopic.c_str());
-      Serial.print("subscribed to ");
-      Serial.print(configTopic);
-      Serial.println();
-
     } else {
       // Wait 5 seconds before retrying
       delay(5000);
@@ -116,31 +116,4 @@ void reconnect() {
 void setConfigTopic(String mac) {
   configTopic = String("config/") + mac;
 }
-
-//void configureTopics() {
-//  JsonObject& root = jsonBuffer.parseObject(testConfig);
-//
-//  if (root.success()) {
-//
-//    log_topic = (char*)root["log-topic"].as<char*>();
-//    Serial.print("log-topic: ");
-//    Serial.println(log_topic );
-//
-//    state_topic = (char*)root["state-topic"].as<char*>();
-//    Serial.print("state-topic: ");
-//    Serial.println(state_topic );
-//
-//    power_topic = (char*)root["power-topic"].as<char*>();
-//    Serial.print("power-topic: ");
-//    Serial.println(power_topic );
-//
-//    monitor_topic = (char*)root["monitor-topic"].as<char*>();
-//    Serial.print("monitor-topic: ");
-//    Serial.println(monitor_topic );
-//
-//    all_power_topic = (char*)root["all-power-topic"].as<char*>();
-//    Serial.print("all-power-topic: ");
-//    Serial.println(all_power_topic );
-//  }
-//}
 
