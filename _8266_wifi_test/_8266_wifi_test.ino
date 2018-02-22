@@ -29,12 +29,11 @@ String configTopic;
 String clientName;
 String macAddress;
 
-int counter = 0;
-
 unsigned long logTime = 0;
 unsigned long statusTime = 0;
 volatile int pcState = -1;
 int currentPcState = -1;
+int lastReconnectAttempt = 0;
 
 StaticJsonBuffer<384> jsonBuffer;
 WiFiClient espClient;
@@ -43,17 +42,19 @@ PubSubClient client(espClient);
 void setup()
 {
   Serial.begin(9600);
-  setup_wifi();
-  Serial.println(D2);
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
-
-  logTime = millis();
-  statusTime = logTime;
+  lastReconnectAttempt = 0;
 }
 
 void loop()
 {
+
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    setup_wifi();
+    client.setServer(mqtt_server, 1883);
+    client.setCallback(callback);
+  }
+
   if (!client.connected()) {
     Serial.println("client not connected");
     reconnect();
@@ -66,21 +67,26 @@ void loop()
     }
   }
 
-  //report status on the serial monitor for debugging every 30 seconds
-  if ((long)( millis() - statusTime ) >= 0)
-  {
-    Serial.print("statusTime: ");
-    Serial.print(statusTime);
-    Serial.println();
-    String statusMessage = String("statusTime: ") + String(statusTime);
+  if (!client.connected()) {
+    long now = millis();
+    if (now - lastReconnectAttempt > 5000) {
+      lastReconnectAttempt = now;
+      // Attempt to reconnect
+      if (reconnect()) {
+        String reconnectMsg = String("reconnect attempt: ") + String(lastReconnectAttempt);
+        client.publish(log_topic, reconnectMsg.c_str(), 1);
 
-    statusTime += 30000;
+        lastReconnectAttempt = 0;
+      }
+    }
+  } else {
+    // Client connected
+
+    client.loop();
   }
-
-  client.loop();
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
+void callback(char* topic, byte * payload, unsigned int length) {
   String strTopic = String(topic);
   if (configTopic.compareTo(strTopic) == 0 && configuring == 0) {
     configureModule(payload);
@@ -90,12 +96,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-void reconnect() {
+bool reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
     // Attempt to connect
     if (client.connect((char*)macAddress.c_str(), mqtt_user, mqtt_password, log_topic, 0, 0, will_message)) {
       Serial.println("mqtt connected");
+      setConfigTopic(macAddress);
       client.subscribe((char*)configTopic.c_str());
       client.publish("config-request", (char*)macAddress.c_str(), 1);
     } else {
@@ -103,10 +110,12 @@ void reconnect() {
       delay(5000);
     }
   }
+
+  return client.connected();
 }
 
 void setup_wifi() {
-  delay(10);
+  delay(500);
   macAddress = WiFi.macAddress();
   String hostname = String("esp-") + macAddress;
   WiFi.hostname(hostname);
@@ -118,8 +127,6 @@ void setup_wifi() {
   }
 
   Serial.println("wifi connected");
-
-  setConfigTopic(macAddress);
   Serial.println(macAddress);
 }
 
@@ -131,7 +138,7 @@ void setConfigTopic(String mac) {
   configTopic = String("config/") + mac;
 }
 
-void configureModule(byte* inputPayload) {
+void configureModule(byte * inputPayload) {
 
   configuring = 1;
 
@@ -200,6 +207,7 @@ void pressPowerButton() {
   delay(1000);
   digitalWrite(CASE_PIN, HIGH);
   client.publish(log_topic, "power button pressed", 1);
+
 }
 
 void checkPcState()
