@@ -8,7 +8,6 @@ long lastDebounceTime = 0;  // the last time the output pin was toggled
 const byte debounceDelay = 50;    // the debounce time; increase if the output flickers
 
 #define IRpin_PIN PINB // ATTiny85 had Port B pins
-#define IRpin 2
 
 #define MAXPULSE    5000  // the maximum pulse we'll listen for - 5 milliseconds 
 #define NUMPULSES    50  // max IR pulse pairs to sample
@@ -73,7 +72,7 @@ uint16_t listenForIR() {  // IR receive code
     unsigned int highpulse, lowpulse;  // temporary storage timing
     highpulse = lowpulse = 0; // start out with no pulse length
 
-    while (IRpin_PIN & _BV(IRpin)) { // got a high pulse
+    while (IRpin_PIN & _BV(IR_PIN)) { // got a high pulse
       highpulse++;
       delayMicroseconds(RESOLUTION);
       if (((highpulse >= MAXPULSE) && (currentpulse != 0)) || currentpulse == NUMPULSES) {
@@ -82,7 +81,7 @@ uint16_t listenForIR() {  // IR receive code
     }
     pulses[currentpulse][0] = highpulse;
 
-    while (! (IRpin_PIN & _BV(IRpin))) { // got a low pulse
+    while (! (IRpin_PIN & _BV(IR_PIN))) { // got a low pulse
       lowpulse++;
       delayMicroseconds(RESOLUTION);
       if (((lowpulse >= MAXPULSE) && (currentpulse != 0)) || currentpulse == NUMPULSES) {
