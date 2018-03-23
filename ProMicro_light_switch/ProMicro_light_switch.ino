@@ -1,7 +1,7 @@
 #include <IRremote.h>;
 #include <Bounce2.h>;
 
-const int RELAY_PIN = 2;
+const int RELAY_PIN = A0;
 const int IR_PIN = 10;
 const int BUTTON_PIN = 4;
 
