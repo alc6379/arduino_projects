@@ -1,7 +1,7 @@
 #include <IRremote.h>;
 #include <Bounce2.h>;
 
-const int SWITCH_PIN = 2;
+const int RELAY_PIN = 2;
 const int IR_PIN = 10;
 const int BUTTON_PIN = 4;
 
@@ -17,17 +17,18 @@ Bounce debouncer = Bounce();
 // the setup function runs once when you press reset or power the board
 void setup() {
   Serial.begin(9600);
-  Serial.println(SWITCH_PIN);
-  // initialize digital pin SWITCH_PIN as an output.
-  pinMode(SWITCH_PIN, OUTPUT);
+  Serial.println(RELAY_PIN);
+  // initialize digital pin RELAY_PIN as an output.
+  pinMode(RELAY_PIN, OUTPUT);
   pinMode(IR_PIN, INPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
   // After setting up the button, setup the Bounce instance :
   debouncer.attach(BUTTON_PIN);
-  debouncer.interval(1); // interval in ms
+  debouncer.interval(100); // interval in ms
 
-  digitalWrite(SWITCH_PIN, lightState);
+  digitalWrite(RELAY_PIN, lightState);
+  digitalWrite(LED_BUILTIN, lightState );
 
   irrecv.enableIRIn();
 }
@@ -38,13 +39,12 @@ void loop() {
   // Update the Bounce instance :
   debouncer.update();
 
-  // Get the updated value :
-  int value = debouncer.read();
-
   // Turn on or off the LED as determined by the state :
-  if ( value == LOW ) {
+  if ( debouncer.fell() ) {
     lightState = !lightState;
-    digitalWrite(SWITCH_PIN, lightState );
+    Serial.println("Button triggered light");
+    digitalWrite(RELAY_PIN, lightState );
+    digitalWrite(LED_BUILTIN, lightState );
   }
   else {
     if (irrecv.decode(&results)) //if the ir receiver module receiver data
@@ -68,7 +68,8 @@ void loop() {
         Serial.print("new light state: ");
         Serial.print(lightState);
         Serial.println();
-        digitalWrite(SWITCH_PIN, lightState);
+        digitalWrite(RELAY_PIN, lightState);
+        digitalWrite(LED_BUILTIN, lightState );
         remoteTriggered = 0;
       }
     }
