@@ -49,6 +49,7 @@ void setup() {
 
 void loop() {
   int distance = getDistance();
+  delay(20); 
 
   if (distance < minDistance) {
     unsigned long startTime = millis();
@@ -60,7 +61,7 @@ void loop() {
     {
       goBackward();
       distance = getDistance();
-
+      delay(20); 
       unsigned long currentTime = millis();
       if (currentTime > startTime + 5000)
       {
@@ -71,11 +72,14 @@ void loop() {
     brake();
     turnLeft();
     distance = getDistance();
+    delay(20); 
 
   } else
   {
     goForward();
   }
+
+  delay(20); 
 }
 
 
@@ -89,7 +93,7 @@ void goBackward()
     digitalWrite(mtr1_0, LOW);
     digitalWrite(mtr2_1, HIGH);
     digitalWrite(mtr2_0, LOW);
-    enableMotors(maxSpeed * .75, maxSpeed * .75);
+    enableMotors(maxSpeed, maxSpeed);
   } else {
     brake();
   }
