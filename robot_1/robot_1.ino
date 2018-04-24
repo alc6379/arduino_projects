@@ -1,7 +1,14 @@
 #include <NewPing.h>
+#include <MPU6050_tockn.h>
+#include <Wire.h>
 
 #define MAX_DISTANCE 400
 #define SONAR_ITERATIONS 5
+#define MAX_TILT_ANGLE 20
+
+const float xOffset = -1.68;
+const float yOffset = 0.81;
+const float zOffset = 0.81;
 
 const int mtr1_0 = 8;
 const int mtr1_1 = 9;
@@ -14,15 +21,13 @@ const int mtr2_enable = 6;
 const int trigPin = 2;
 const int echoPin = 3;
 const int minSpeed = 100;
-const int maxSpeed = 200;
-const int minDistance = 40; /* closest distance (in cm) that the vehicle will get to something
+const int maxSpeed = 150;
+const int minDistance = 10; /* closest distance (in cm) that the vehicle will get to something
                               before trying to turn around */
 int reverseDistance = minDistance + 10;
 
 NewPing sonar(trigPin, echoPin, MAX_DISTANCE);
-
-int lastCheckedDistance = minDistance;
-
+MPU6050 mpu6050(Wire);
 
 void setup() {
   //  pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
@@ -34,7 +39,10 @@ void setup() {
   pinMode(mtr2_1, OUTPUT);
   pinMode(mtr2_enable, OUTPUT);
   Serial.begin(9600);
-
+  Wire.begin();
+  mpu6050.begin();
+  mpu6050.calcGyroOffsets();
+  //  mpu6050.setGyroOffsets(xOffset, yOffset, zOffset);
 }
 
 
@@ -42,14 +50,13 @@ void setup() {
 void loop() {
   int distance = getDistance();
 
-
   if (distance < minDistance) {
     unsigned long startTime = millis();
-    bool executedHardSpin = false;
-
     brake();
 
-    while (distance < reverseDistance )
+    bool turnEarly = false;
+
+    while (distance < reverseDistance && turnEarly == false)
     {
       goBackward();
       distance = getDistance();
@@ -57,18 +64,14 @@ void loop() {
       unsigned long currentTime = millis();
       if (currentTime > startTime + 5000)
       {
-        brake();
-        hardLeft();
-        distance = getDistance();
-        executedHardSpin = true;
+        turnEarly = true;
       }
     }
 
-    if (executedHardSpin == false)
-    {
-      brake();
-      turnLeft();
-    }
+    brake();
+    turnLeft();
+    distance = getDistance();
+
   } else
   {
     goForward();
@@ -78,11 +81,18 @@ void loop() {
 
 void goBackward()
 {
-  digitalWrite(mtr1_1, HIGH);
-  digitalWrite(mtr1_0, LOW);
-  digitalWrite(mtr2_1, HIGH);
-  digitalWrite(mtr2_0, LOW);
-  enableMotors(maxSpeed * .75, maxSpeed * .75);
+
+  bool tilted = isTilted();
+
+  if (!tilted) {
+    digitalWrite(mtr1_1, HIGH);
+    digitalWrite(mtr1_0, LOW);
+    digitalWrite(mtr2_1, HIGH);
+    digitalWrite(mtr2_0, LOW);
+    enableMotors(maxSpeed * .75, maxSpeed * .75);
+  } else {
+    brake();
+  }
 }
 
 void goForward(int leftSpeed, int rightSpeed)
@@ -94,13 +104,28 @@ void goForward(int leftSpeed, int rightSpeed)
   enableMotors(leftSpeed, rightSpeed);
 }
 
-void hardLeft() {
-  digitalWrite(mtr1_1, HIGH);
-  digitalWrite(mtr1_0, LOW);
-  digitalWrite(mtr2_1, LOW);
-  digitalWrite(mtr2_0, HIGH);
-  enableMotors(maxSpeed, maxSpeed);
-  delay(100);
+void turnLeft() {
+
+  Serial.println("hard left");
+  mpu6050.update();
+
+  float origOrientation = mpu6050.getAngleZ();
+  float targetOrientation = origOrientation + 45;
+  float currentOrientation = origOrientation;
+
+  while (currentOrientation < targetOrientation) {
+    digitalWrite(mtr1_1, HIGH);
+    digitalWrite(mtr1_0, LOW);
+    digitalWrite(mtr2_1, LOW);
+    digitalWrite(mtr2_0, HIGH);
+    enableMotors(minSpeed, minSpeed);
+    delay(5);
+    mpu6050.update();
+    currentOrientation = mpu6050.getAngleZ();
+    Serial.print("Z axis: ");
+    Serial.println(currentOrientation);
+  }
+  brake();
 }
 
 void goForward()
@@ -108,35 +133,21 @@ void goForward()
   goForward(maxSpeed, maxSpeed);
 }
 
-void turnLeft()
-{
-  Serial.println("turning left");
-  //  goForward(minSpeed, maxSpeed);
-  goForward(minSpeed, 200);
-  delay(1000);
-  brake();
-  Serial.println("completed left turn");
-}
-
-void turnRight()
-{
-  goForward(maxSpeed, minSpeed);
-  delay(100);
-  brake();
-}
-
 void brake() {
-  digitalWrite(mtr1_1, LOW);
-  digitalWrite(mtr1_0, LOW);
-  digitalWrite(mtr2_1, LOW);
-  digitalWrite(mtr2_0, LOW);
   enableMotors(0, 0);
 }
 
 void enableMotors(int leftSpeed, int rightSpeed)
 {
-  analogWrite(mtr1_enable, leftSpeed);
-  analogWrite(mtr2_enable, rightSpeed);
+  bool tilted = isTilted();
+
+  if (!tilted) {
+    analogWrite(mtr1_enable, leftSpeed);
+    analogWrite(mtr2_enable, rightSpeed);
+  } else
+  {
+    brake();
+  }
 }
 
 
@@ -154,22 +165,23 @@ int getDistance() {
   return (int)distance;
 }
 
-#define swap(a,b) a ^= b; b ^= a; a ^= b;
-#define sort(a,b) if(a>b){ swap(a,b); }
-
-int median(int a, int b, int c, int d, int e)
+bool isTilted()
 {
-  sort(a, b);
-  sort(d, e);
-  sort(a, c);
-  sort(b, c);
-  sort(a, d);
-  sort(c, d);
-  sort(b, e);
-  sort(b, c);
-  // this last one is obviously unnecessary for the median
-  //sort(d,e);
+  mpu6050.update();
 
-  return c;
+  float xAngle = mpu6050.getAngleX();
+  float yAngle = mpu6050.getAngleY();
+
+  int absX = abs(xAngle);
+
+  int absY = abs(yAngle);
+
+  Serial.print("absX: ");
+  Serial.print(absX);
+  Serial.print("\t");
+  Serial.print("absY: ");
+  Serial.println(absY);
+
+  return absY > MAX_TILT_ANGLE || absX > MAX_TILT_ANGLE;
 }
 
