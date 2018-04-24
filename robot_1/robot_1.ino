@@ -22,7 +22,7 @@ const int trigPin = 2;
 const int echoPin = 3;
 const int minSpeed = 100;
 const int maxSpeed = 150;
-const int minDistance = 10; /* closest distance (in cm) that the vehicle will get to something
+const int minDistance = 15; /* closest distance (in cm) that the vehicle will get to something
                               before trying to turn around */
 int reverseDistance = minDistance + 10;
 
@@ -114,7 +114,7 @@ void turnLeft() {
   mpu6050.update();
 
   float origOrientation = mpu6050.getAngleZ();
-  float targetOrientation = origOrientation + 45;
+  float targetOrientation = origOrientation + 60;
   float currentOrientation = origOrientation;
 
   while (currentOrientation < targetOrientation) {
