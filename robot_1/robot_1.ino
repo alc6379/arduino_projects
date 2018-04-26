@@ -49,7 +49,7 @@ void setup() {
 
 void loop() {
   int distance = getDistance();
-  delay(20); 
+  delay(20);
 
   if (distance < minDistance) {
     unsigned long startTime = millis();
@@ -59,9 +59,8 @@ void loop() {
 
     while (distance < reverseDistance && turnEarly == false)
     {
-      goBackward();
+      goBackward(5);
       distance = getDistance();
-      delay(20); 
       unsigned long currentTime = millis();
       if (currentTime > startTime + 5000)
       {
@@ -72,40 +71,64 @@ void loop() {
     brake();
     turnLeft();
     distance = getDistance();
-    delay(20); 
+    delay(20);
 
   } else
   {
-    goForward();
+    goForward(5);
   }
-
-  delay(20); 
 }
 
 
-void goBackward()
+void goBackward( int duration )
 {
+  mpu6050.update();
+  float targetOrientation = mpu6050.getAngleZ();
+  int targetTime = millis() + duration;
 
-  bool tilted = isTilted();
+  while (millis() < targetTime)
+  {
+    mpu6050.update();
 
-  if (!tilted) {
+    int currentOrientation = mpu6050.getAngleZ();
+    
     digitalWrite(mtr1_1, HIGH);
     digitalWrite(mtr1_0, LOW);
     digitalWrite(mtr2_1, HIGH);
     digitalWrite(mtr2_0, LOW);
-    enableMotors(maxSpeed, maxSpeed);
-  } else {
-    brake();
+
+
+    int leftSpeed = maxSpeed - (currentOrientation - targetOrientation);
+    int rightSpeed = maxSpeed + (currentOrientation - targetOrientation);
+    enableMotors(leftSpeed, rightSpeed);
   }
+
+  brake();
 }
 
-void goForward(int leftSpeed, int rightSpeed)
+void goForward(int duration)
 {
-  digitalWrite(mtr1_1, LOW);
-  digitalWrite(mtr1_0, HIGH);
-  digitalWrite(mtr2_1, LOW);
-  digitalWrite(mtr2_0, HIGH);
-  enableMotors(leftSpeed, rightSpeed);
+  mpu6050.update();
+  float targetOrientation = mpu6050.getAngleZ();
+  int targetTime = millis() + duration;
+
+  while (millis() < targetTime)
+  {
+    mpu6050.update();
+
+    digitalWrite(mtr1_1, LOW);
+    digitalWrite(mtr1_0, HIGH);
+    digitalWrite(mtr2_1, LOW);
+    digitalWrite(mtr2_0, HIGH);
+    
+    int currentOrientation = mpu6050.getAngleZ();
+    
+    int leftSpeed = maxSpeed - (currentOrientation - targetOrientation);
+    int rightSpeed = maxSpeed + (currentOrientation - targetOrientation);
+    enableMotors(leftSpeed, rightSpeed);
+  }
+
+  brake();
 }
 
 void turnLeft() {
@@ -132,11 +155,6 @@ void turnLeft() {
   brake();
 }
 
-void goForward()
-{
-  goForward(maxSpeed, maxSpeed);
-}
-
 void brake() {
   enableMotors(0, 0);
 }
@@ -148,7 +166,8 @@ void enableMotors(int leftSpeed, int rightSpeed)
   if (!tilted) {
     analogWrite(mtr1_enable, leftSpeed);
     analogWrite(mtr2_enable, rightSpeed);
-  } else
+  }
+  else
   {
     brake();
   }
