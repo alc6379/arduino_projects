@@ -6,7 +6,7 @@
 #define SONAR_ITERATIONS 5
 #define MAX_TILT_ANGLE 20
 
-const float xOffset = -1.68;
+const float xOffset = -1.68; //TODO: use these instead of auto calibration
 const float yOffset = 0.81;
 const float zOffset = 0.81;
 
