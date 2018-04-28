@@ -3,7 +3,7 @@
 #include <avr/power.h>
 #endif
 
-#define PIN            2
+#define PIN            0
 #define NUMPIXELS      12
 #define BUTTON         3
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN);
