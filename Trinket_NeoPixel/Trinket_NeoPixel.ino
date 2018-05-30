@@ -9,7 +9,7 @@
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN);
 
 int currentColor = 0;
-int currentPixel = -1;
+int currentPixel = 0;
 
 int buttonState;             // the current reading from the input pin
 int lastButtonState = LOW;   // the previous reading from the input pin
@@ -25,9 +25,10 @@ void setup() {
 #endif
   pixels.begin();
   pixels.setBrightness(20); // 1/3 brightness
+  pixels.setPixelColor(currentPixel, 128, 0, 0);
   pixels.show();
   pinMode(BUTTON, INPUT_PULLUP);
-
+  
 }
 
 void loop() {
