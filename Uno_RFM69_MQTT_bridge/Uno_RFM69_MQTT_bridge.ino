@@ -23,14 +23,15 @@
 #define RFM69_RST     7  // "A"
 #define SD_CS         4
 #define ETH_CS        10
-#define LED           5
+#define GREEN_LED     5
+#define RED_LED       3
 
 #define MESSAGE_DELIMITER "|"
 
 
 byte mac[] = { 0xB0, 0x0B, 0x1E, 0xB0, 0x0B, 0x1E };
 byte ipAddr[] = {192, 168, 1, 222};
-IPAddress server(192,168,1,204); 
+IPAddress server(192, 168, 1, 204);
 
 EthernetClient net;
 PubSubClient client(net);
@@ -45,11 +46,14 @@ void setup()
   Serial.begin(9600);
   //while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
 
-  pinMode(LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
   pinMode(RFM69_RST, OUTPUT);
   pinMode(SD_CS, OUTPUT);
   pinMode(ETH_CS, OUTPUT);
   digitalWrite(SD_CS, HIGH);
+  digitalWrite(GREEN_LED, LOW); 
+  digitalWrite(RED_LED, LOW); 
   //  digitalWrite(ETH_CS, HIGH);
 
 
@@ -61,14 +65,15 @@ void setup()
 
 char tempChars[RH_RF69_MAX_MESSAGE_LEN];
 
-char deviceName[RH_RF69_MAX_MESSAGE_LEN] = {0};
-char messageType[RH_RF69_MAX_MESSAGE_LEN] = {0};
-char messageValue[RH_RF69_MAX_MESSAGE_LEN] = {0};
+char deviceName[RH_RF69_MAX_MESSAGE_LEN / 2] = {0};
+char messageType[RH_RF69_MAX_MESSAGE_LEN / 2] = {0};
+char messageValue[RH_RF69_MAX_MESSAGE_LEN / 2] = {0};
 
 
 void loop() {
+  digitalWrite(GREEN_LED, HIGH);
   if (rf69.available()) {
-    Serial.println("radio available");
+    Serial.println("message recieved");
     // Should be a message for us now
     uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
@@ -84,11 +89,13 @@ void loop() {
 
       parseData((char*)buf);
       showParsedData();
-
+      
+      digitalWrite(GREEN_LED, LOW);
+      Blink(RED_LED, 100, 3); 
       Serial.println("Sending message to MQTT");
       sendMessage();
 
-      Blink(LED, 40, 3);
+      Blink(GREEN_LED, 100, 3);
     } else {
       Serial.println("Receive failed");
     }
@@ -164,9 +171,18 @@ void sendMessage()
 
 void connectMqtt() {
   Serial.print("connecting...");
+  int connCount = 0;
+
   while (!client.connect("rfm69bridge")) {
     Serial.print(".");
     delay(1000);
+    if (connCount >= 10) {
+      while (true) {
+        Serial.println(); 
+        Serial.print("MQTT failure (retry count > 10)"); 
+        Blink(GREEN_LED, 500, 1); 
+      }
+    }
   }
 
   Serial.println("\nconnected!");
@@ -201,8 +217,6 @@ void initRadio() {
                     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
                   };
   rf69.setEncryptionKey(key);
-
-  pinMode(LED, OUTPUT);
 
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 }
