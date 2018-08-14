@@ -11,7 +11,7 @@
 #include <SPI.h>
 #include <RH_RF69.h>
 #include <Ethernet.h>
-#include <MQTT.h>
+#include <PubSubClient.h>
 
 /************ Radio Setup ***************/
 
@@ -30,9 +30,10 @@
 
 byte mac[] = { 0xB0, 0x0B, 0x1E, 0xB0, 0x0B, 0x1E };
 byte ipAddr[] = {192, 168, 1, 222};
+IPAddress server(192,168,1,204); 
 
 EthernetClient net;
-MQTTClient client;
+PubSubClient client(net);
 
 // Singleton instance of the radio driver
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
@@ -55,7 +56,7 @@ void setup()
   initEthernet();
   initMqtt();
   initRadio();
-
+  sendMessage("bridge/status", "initialized");
 }
 
 char tempChars[RH_RF69_MAX_MESSAGE_LEN];
@@ -85,7 +86,7 @@ void loop() {
       showParsedData();
 
       Serial.println("Sending message to MQTT");
-      sendMessage(); 
+      sendMessage();
 
       Blink(LED, 40, 3);
     } else {
@@ -114,33 +115,51 @@ void initEthernet() {
 }
 
 void initMqtt() {
-  client.begin("192.168.1.204", net);
+  client.setServer(server, 1883);
+}
+
+void sendMessage(char* topic, char* message) {
+  enableEthernet();
+
+  if (!client.connected()) {
+    connectMqtt();
+  }
+
+  Serial.print("Publishing to topic: ");
+  Serial.print(topic);
+  Serial.print(" Message: ");
+  Serial.println(message);
+  client.publish(topic, message);
+
+  client.loop();
+
+  enableRadio();
 }
 
 void sendMessage()
 {
+  //build the topic name
+  char buff[sizeof(deviceName) + sizeof(messageType) + 1];
+
+  strcpy(buff, deviceName);
+  strcat(buff, "/");
+  strcat(buff, messageType);
+
   enableEthernet();
 
   if (!client.connected()) {
-    connectMqtt(); 
+    connectMqtt();
   }
 
-  //build the topic name 
-  char buff[sizeof(deviceName) + sizeof(messageType) + 1]; 
-
-  strcpy(buff, deviceName); 
-  strcat(buff, "/"); 
-  strcat(buff, messageType); 
-
-  Serial.print("Publishing to topic: "); 
-  Serial.print(buff); 
+  Serial.print("Publishing to topic: ");
+  Serial.print(buff);
   Serial.print(" Message: ");
-  Serial.println(messageValue); 
-  client.publish(buff, messageValue); 
+  Serial.println(messageValue);
+  client.publish(buff, messageValue);
 
-  client.loop(); 
+  client.loop();
 
-  enableRadio(); 
+  enableRadio();
 }
 
 void connectMqtt() {
