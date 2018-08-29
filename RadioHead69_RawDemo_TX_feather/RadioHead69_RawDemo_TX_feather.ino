@@ -79,7 +79,7 @@ void loop() {
 
   /* message format: (devicename)|messagetype|value */
 
-  char radiopacket[] = "feathertest|battery|";
+  char radiopacket[] = "sendtest|battery|";
   char batteryValue[4];
   char msgbuffer[sizeof(radiopacket) + sizeof(batteryValue)];
 

@@ -66,33 +66,33 @@ void setup() {
 
   Serial.println("Initialized");
 
-  sendMessage("kitchen|status|initialized"); 
+  sendMessage("kitchen|status|initialized");
 
 }
 
 void loop() {
 
   int interruptNum = digitalPinToInterrupt(PIR);
-  attachInterrupt(interruptNum, motionDetected, RISING);
+  
 
   //turn off the motionDetected
-  if (detected == true && millis() > measuredMsec + MSEC_DELAY) {
+  if (detected == true) {
+    delay(1000); 
     digitalWrite(GREEN, LOW);
     detected = false;
+    sendMessage(controlMsg);
   }
 
-  sendMessage(controlMsg); 
+  delay(50);
 
-  delay(50); 
-  
   float batteryReading = checkBattery();
 
   int msgLength = sizeof(radiopacket) + batteryMsgLength;
 
   char* batteryMessage = batteryToString(batteryReading);
-  sendMessage(batteryMessage); 
+  sendMessage(batteryMessage);
 
-  
+
 
 
   if (batteryReading < batteryThreshold) {
@@ -102,7 +102,9 @@ void loop() {
     digitalWrite(RED, LOW);
   }
 
-  LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF); 
+  attachInterrupt(interruptNum, motionDetected, RISING);
+
+  LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 
   detachInterrupt(interruptNum);
 

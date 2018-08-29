@@ -1,13 +1,3 @@
-// rf69 demo tx rx.pde
-// -*- mode: C++ -*-
-// Example sketch showing how to create a simple messageing client
-// with the RH_RF69 class. RH_RF69 class does not provide for addressing or
-// reliability, so you should only use RH_RF69  if you do not need the higher
-// level messaging abilities.
-// It is designed to work with the other example rf69_server.
-// Demonstrates the use of AES encryption, setting the frequency and modem
-// configuration
-
 #include <SPI.h>
 #include <RH_RF69.h>
 #include <Ethernet.h>
@@ -26,12 +16,15 @@
 #define GREEN_LED     5
 #define RED_LED       3
 
+#define MAX_FIELD_SIZE 8
+
 #define MESSAGE_DELIMITER "|"
 
 
-byte mac[] = { 0xB0, 0x0B, 0x1E, 0xB0, 0x0B, 0x1E };
-byte ipAddr[] = {192, 168, 1, 222};
+const byte mac[] PROGMEM = { 0xB0, 0x0B, 0x1E, 0xB0, 0x0B, 0x1E };
+const byte ipAddr[] PROGMEM = {192, 168, 1, 222};
 IPAddress server(192, 168, 1, 204);
+
 
 EthernetClient net;
 PubSubClient client(net);
@@ -40,6 +33,18 @@ PubSubClient client(net);
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
 
 int16_t packetnum = 0;  // packet counter, we increment per xmission
+
+char tempChars[(MAX_FIELD_SIZE * 3) + 3];
+
+char deviceName[MAX_FIELD_SIZE] = {0};
+char messageType[MAX_FIELD_SIZE] = {0};
+char messageValue[MAX_FIELD_SIZE] = {0};
+
+// The encryption key has to be the same as the one in the server
+const uint8_t key[] PROGMEM = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+                                0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+                              };
+
 
 void setup()
 {
@@ -52,23 +57,18 @@ void setup()
   pinMode(SD_CS, OUTPUT);
   pinMode(ETH_CS, OUTPUT);
   digitalWrite(SD_CS, HIGH);
-  digitalWrite(GREEN_LED, LOW); 
-  digitalWrite(RED_LED, LOW); 
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, LOW);
   //  digitalWrite(ETH_CS, HIGH);
+
+  
 
 
   initEthernet();
   initMqtt();
   initRadio();
-  sendMessage("bridge/status", "initialized");
+  sendRetainedMessage("bridge/status", "initialized");
 }
-
-char tempChars[RH_RF69_MAX_MESSAGE_LEN];
-
-char deviceName[RH_RF69_MAX_MESSAGE_LEN / 2] = {0};
-char messageType[RH_RF69_MAX_MESSAGE_LEN / 2] = {0};
-char messageValue[RH_RF69_MAX_MESSAGE_LEN / 2] = {0};
-
 
 void loop() {
   digitalWrite(GREEN_LED, HIGH);
@@ -89,9 +89,9 @@ void loop() {
 
       parseData((char*)buf);
       showParsedData();
-      
+
       digitalWrite(GREEN_LED, LOW);
-      Blink(RED_LED, 100, 3); 
+      Blink(RED_LED, 100, 3);
       Serial.println("Sending message to MQTT");
       sendMessage();
 
@@ -125,7 +125,7 @@ void initMqtt() {
   client.setServer(server, 1883);
 }
 
-void sendMessage(char* topic, char* message) {
+void sendRetainedMessage(char* topic, char* message) {
   enableEthernet();
 
   if (!client.connected()) {
@@ -136,7 +136,7 @@ void sendMessage(char* topic, char* message) {
   Serial.print(topic);
   Serial.print(" Message: ");
   Serial.println(message);
-  client.publish(topic, message);
+  client.publish(topic, message, true);
 
   client.loop();
 
@@ -178,9 +178,9 @@ void connectMqtt() {
     delay(1000);
     if (connCount >= 10) {
       while (true) {
-        Serial.println(); 
-        Serial.print("MQTT failure (retry count > 10)"); 
-        Blink(GREEN_LED, 500, 1); 
+        Serial.println();
+        Serial.print("MQTT failure (retry count > 10)");
+        Blink(GREEN_LED, 500, 1);
       }
     }
   }
@@ -212,10 +212,7 @@ void initRadio() {
   // ishighpowermodule flag set like this:
   rf69.setTxPower(14 , true);  // range from 14-20 for power, 2nd arg must be true for 69HCW
 
-  // The encryption key has to be the same as the one in the server
-  uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-                    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
-                  };
+
   rf69.setEncryptionKey(key);
 
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
