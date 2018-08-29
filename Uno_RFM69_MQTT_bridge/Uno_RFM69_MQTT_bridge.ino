@@ -66,8 +66,9 @@ void setup()
 
   initEthernet();
   initMqtt();
-  initRadio();
   sendRetainedMessage("bridge/status", "initialized");
+  initRadio();
+  
 }
 
 void loop() {
