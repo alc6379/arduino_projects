@@ -41,42 +41,44 @@ void setup() {
   Serial.begin(9600);
   Wire.begin();
   mpu6050.begin();
-  mpu6050.calcGyroOffsets();
-  //  mpu6050.setGyroOffsets(xOffset, yOffset, zOffset);
+  //  mpu6050.calcGyroOffsets();
+  mpu6050.setGyroOffsets(xOffset, yOffset, zOffset);
+
+  goForward(5000); 
+  turnLeft();
+  turnLeft(); 
+  goForward(2000); 
 }
 
 
 
 void loop() {
-  int distance = getDistance();
-  delay(20);
-
-  if (distance < minDistance) {
-    unsigned long startTime = millis();
-    brake();
-
-    bool turnEarly = false;
-
-    while (distance < reverseDistance && turnEarly == false)
-    {
-      goBackward(5);
-      distance = getDistance();
-      unsigned long currentTime = millis();
-      if (currentTime > startTime + 5000)
-      {
-        turnEarly = true;
-      }
-    }
-
-    brake();
-    turnLeft();
-    distance = getDistance();
-    delay(20);
-
-  } else
-  {
-    goForward(5);
-  }
+//  int distance = getDistance();
+//
+//  if (distance < minDistance) {
+//    unsigned long startTime = millis();
+//    brake();
+//
+//    bool turnEarly = false;
+//
+//    while (distance < reverseDistance && turnEarly == false)
+//    {
+//      goBackward(20);
+//      distance = getDistance();
+//      unsigned long currentTime = millis();
+//      if (currentTime > startTime + 5000)
+//      {
+//        turnEarly = true;
+//      }
+//    }
+//
+//    brake();
+//    turnLeft();
+//    distance = getDistance();
+//  } else
+//  {
+//    goForward(100);
+//  }
 }
 
 
@@ -91,7 +93,7 @@ void goBackward( int duration )
     mpu6050.update();
 
     int currentOrientation = mpu6050.getAngleZ();
-    
+
     digitalWrite(mtr1_1, HIGH);
     digitalWrite(mtr1_0, LOW);
     digitalWrite(mtr2_1, HIGH);
@@ -102,8 +104,6 @@ void goBackward( int duration )
     int rightSpeed = maxSpeed + (currentOrientation - targetOrientation);
     enableMotors(leftSpeed, rightSpeed);
   }
-
-  brake();
 }
 
 void goForward(int duration)
@@ -120,15 +120,15 @@ void goForward(int duration)
     digitalWrite(mtr1_0, HIGH);
     digitalWrite(mtr2_1, LOW);
     digitalWrite(mtr2_0, HIGH);
-    
+
     int currentOrientation = mpu6050.getAngleZ();
-    
+
     int leftSpeed = maxSpeed - (currentOrientation - targetOrientation);
     int rightSpeed = maxSpeed + (currentOrientation - targetOrientation);
+
     enableMotors(leftSpeed, rightSpeed);
   }
-
-  brake();
+  brake(); 
 }
 
 void turnLeft() {
